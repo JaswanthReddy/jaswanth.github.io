@@ -1,205 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Indian News Hub</title>
-  <style>
-    /* Layout similar to BizToc style */
-    body {
-      margin: 0;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: #fff;
-      color: #333;
-    }
-    header {
-      background: #222;
-      color: #fff;
-      text-align: center;
-      padding: 20px;
-      text-transform: uppercase;
-      font-size: 1.8em;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-    #global-loader {
-      text-align: center;
-      padding: 20px;
-      font-size: 1.2em;
-    }
-    .container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-      padding: 20px;
-    }
-    section {
-      background: #f9f9f9;
-      border: 1px solid #eee;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      min-height: 150px;
-    }
-    section.loading h2 {
-      background: #ffc107; /* Yellow when loading */
-    }
-    section.failed h2 {
-      background: #dc3545; /* Red when failed */
-    }
-    section.loaded h2 {
-      background: #444; /* Dark when loaded */
-    }
-    section h2 {
-      margin: 0 0 10px;
-      padding: 10px;
-      color: #fff;
-      font-size: 1.1em;
-      border-radius: 3px;
-      text-align: center;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    li {
-      margin-bottom: 8px;
-    }
-    li a {
-      text-decoration: none;
-      color: #0073e6;
-      transition: color 0.2s;
-      font-size: 0.9em;
-    }
-    li a:hover {
-      color: #0056b3;
-      text-decoration: underline;
-    }
-    li a:visited {
-      color: #563d7c;
-    }
-    button.more-button {
-      display: block;
-      margin: 10px auto 0;
-      padding: 8px 15px;
-      font-size: 0.9em;
-      background: #0073e6;
-      color: #fff;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    button.more-button:hover {
-      background: #0056b3;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    Indian News Hub
-  </header>
-  <div id="global-loader">Loading news sources, please wait...</div>
-  <div class="container" id="news-container">
-    <!-- Feed sections will be added here dynamically -->
-  </div>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      // List of feeds (direct RSS URLs)
-      const feeds = [
-        { source: "Times of India", url: "https://timesofindia.indiatimes.com/rssfeedstopstories.cms" },
-        { source: "Hindustan Times", url: "https://www.hindustantimes.com/rss/topnews/rssfeed.xml" },
-        { source: "NDTV", url: "https://feeds.feedburner.com/NDTV-LatestNews" },
-        { source: "Indian Express", url: "https://indianexpress.com/feed/" },
-        { source: "News18", url: "https://www.news18.com/rss/india.xml" },
-        { source: "Firstpost", url: "https://www.firstpost.com/rss/india.xml" },
-        { source: "The Hindu", url: "https://www.thehindu.com/feeder/default.rss" },
-        { source: "Business Standard", url: "https://www.business-standard.com/rss/latest.rss" },
-        { source: "Scroll.in", url: "https://scroll.in/feed" },
-        { source: "The Wire", url: "https://thewire.in/rss" },
-        { source: "Republic World", url: "https://www.republicworld.com/rss/latest-news.rss" },
-        { source: "The Lallantop", url: "https://www.thelallantop.com/feed/" }
-      ];
-  
-      const container = document.getElementById("news-container");
-      const globalLoader = document.getElementById("global-loader");
-      let remainingFeeds = feeds.length;
-  
-      function feedFinished() {
-        remainingFeeds--;
-        if (remainingFeeds === 0) {
-          globalLoader.style.display = "none";
-        }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indian News Hub</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        overflow-y: auto; /* Enable vertical scrolling */
       }
-  
-      function createListItem(item) {
-        const titleEl = item.querySelector("title");
-        const linkEl = item.querySelector("link");
-        const title = titleEl ? titleEl.textContent : "No Title";
-        const link = linkEl ? linkEl.textContent : "#";
-        const li = document.createElement("li");
-        li.innerHTML = `<a href="${link}" target="_blank">${title}</a>`;
-        return li;
+      header {
+        background-color: #333;
+        color: #fff;
+        padding: 15px;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
       }
-  
-      feeds.forEach(feed => {
-        // Create a section for each feed with a loading indicator
-        const section = document.createElement("section");
-        section.className = "loading";
-        const header = document.createElement("h2");
-        header.textContent = `${feed.source} (Loading...)`;
-        section.appendChild(header);
-        container.appendChild(section);
-  
-        // Directly fetch the RSS feed (note: many servers do not allow cross-origin requests)
-        fetch(feed.url, { mode: 'cors' })
-          .then(response => {
-            if (!response.ok) throw new Error("Network response not ok");
-            return response.text();
-          })
-          .then(str => {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(str, "text/xml");
-            const items = xmlDoc.querySelectorAll("item");
-            if (!items || items.length === 0) throw new Error("No items found");
-  
-            // Update section to loaded state
-            section.className = "loaded";
-            header.textContent = feed.source;
-  
-            const ul = document.createElement("ul");
-            const itemsArray = Array.from(items);
-            const recentItems = itemsArray.slice(0, 10);
-            const remainingItems = itemsArray.slice(10);
-  
-            recentItems.forEach(item => ul.appendChild(createListItem(item)));
-            section.appendChild(ul);
-  
-            // Add "View More" button if there are extra articles
-            if (remainingItems.length > 0) {
-              const moreButton = document.createElement("button");
-              moreButton.textContent = "View More";
-              moreButton.className = "more-button";
-              moreButton.addEventListener("click", function () {
-                remainingItems.forEach(item => ul.appendChild(createListItem(item)));
-                moreButton.style.display = "none";
+      #global-loader {
+        text-align: center;
+        padding: 20px;
+        font-size: 1.1em;
+        background-color: #fff;
+      }
+      .container {
+        display: flex;
+        flex-wrap: wrap; /* Wrap sections into new rows */
+        gap: 20px; /* Space between tiles */
+        padding: 20px;
+        justify-content: center; /* Center tiles in the container */
+      }
+      section {
+        flex: 1 1 calc(33.33% - 40px); /* Three sections per row */
+        box-sizing: border-box;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        min-width: 300px; /* Minimum width for smaller screens */
+      }
+      section h2 {
+        font-size: 1em;
+        margin-bottom: 10px;
+        padding: 10px;
+        color: #fff;
+        text-align: center;
+        border-radius: 5px;
+      }
+      section.loading h2 {
+        background-color: #ffc107; /* Yellow for loading */
+      }
+      section.failed h2 {
+        background-color: #dc3545; /* Red for failed */
+      }
+      section.loaded h2 {
+        background-color: #28a745; /* Green for loaded */
+      }
+      ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin: 0;
+      }
+      li {
+        margin-bottom: 8px;
+      }
+      li a {
+        text-decoration: none;
+        color: #333; /* Default link color */
+        font-size: 0.9em; /* Slightly smaller font size for compactness */
+      }
+      li a:hover {
+        text-decoration: underline; /* Underline on hover */
+      }
+      li a:visited {
+        color: #888; /* Change color for visited links */
+      }
+      button.more-button {
+        display: block;
+        margin-top: 10px;
+        padding: 5px 10px;
+        font-size: 0.8em; /* Smaller button size */
+        background-color: #333; /* Dark button background */
+        color: #fff; /* White button text */
+        border: none;
+        border-radius: 5px;
+        cursor: pointer; /* Pointer cursor on hover */
+      }
+      button.more-button:hover {
+        background-color: #555; /* Slightly lighter on hover */
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Indian News Hub</h1>
+      <p>News grouped by source in a grid layout (3 per row). Links change color after being read.</p>
+    </header>
+    <!-- Global loader element -->
+    <div id="global-loader">Loading news sources, please wait...</div>
+    <div class="container" id="news-container">
+      <!-- News source sections will be added here dynamically -->
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        
+          const proxyUrl = "https://api.allorigins.win/get?url=";
+
+          const feeds = [
+            { source:"Times of India", url:"https://timesofindia.indiatimes.com/rssfeedstopstories.cms"},
+            {source:"Hindustan Times",url:"https://www.hindustantimes.com/rss/topnews/rssfeed.xml"},
+            {source:"NDTV",url:"https://feeds.feedburner.com/NDTV-LatestNews"},
+            {source:"Indian Express",url:"https://indianexpress.com/feed/"},
+            {source:"News18",url:"https://www.news18.com/rss/india.xml"},
+            {source:"Firstpost",url:"https://www.firstpost.com/rss/india.xml"},
+            {source:"The Hindu",url:"https://www.thehindu.com/feeder/default.rss"},
+            {source:"Business Standard",url:"https://www.business-standard.com/rss/latest.rss"},
+            {source:"Scroll.in",url:"https://scroll.in/feed"},
+            {source:"The Wire",url:"https://thewire.in/rss"},
+            {source:"Republic World",url:"https://www.republicworld.com/rss/latest-news.rss"},
+            {source:"The Lallantop",url:"https://www.thelallantop.com/feed/"}
+          ];
+
+          const container = document.getElementById("news-container");
+          const globalLoader = document.getElementById("global-loader");
+          let remainingFeeds = feeds.length;
+
+          function feedFinished() {
+            remainingFeeds--;
+            if (remainingFeeds === 0) globalLoader.style.display = "none";
+          }
+
+          function createListItem(item) {
+            const titleElement = item.querySelector("title");
+            const linkElement = item.querySelector("link");
+            const title = titleElement ? titleElement.textContent : "No Title";
+            const link = linkElement ? linkElement.textContent : "#";
+            const li = document.createElement("li");
+            li.innerHTML = `<a href="${link}">${title}</a>`;
+            return li;
+          }
+
+          feeds.forEach((feed) => {
+            // Create a section immediately to show loading state
+            const section = document.createElement("section");
+            section.className = "loading";
+            const header = document.createElement("h2");
+            header.textContent = `${feed.source} (Loading...)`;
+            section.appendChild(header);
+            container.appendChild(section);
+
+            fetch(proxyUrl + encodeURIComponent(feed.url))
+              .then((response) => response.json())
+              .then((data) => {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                const items = xmlDoc.querySelectorAll("item");
+                if (!items || items.length === 0) throw new Error("No items found");
+
+                // Update section to loaded state
+                section.className = "loaded";
+                header.textContent = feed.source;
+
+                // Add headlines to the list
+                const ul = document.createElement("ul");
+                const itemsArray = Array.from(items);
+                const recentItems = itemsArray.slice(0, 10);
+                const remainingItems = itemsArray.slice(10);
+
+                recentItems.forEach((item) => ul.appendChild(createListItem(item)));
+                section.appendChild(ul);
+
+                // Add "View More" button if there are more articles
+                if (remainingItems.length > 0) {
+                  const moreButton = document.createElement("button");
+                  moreButton.textContent = "View More";
+                  moreButton.className = "more-button";
+                  moreButton.addEventListener("click", function () {
+                    remainingItems.forEach((item) => ul.appendChild(createListItem(item)));
+                    moreButton.style.display = "none"; // Hide button after expanding
+                  });
+                  section.appendChild(moreButton);
+                }
+
+                feedFinished();
+              })
+              .catch((error) => {
+                console.error(`Error fetching/parsing RSS for ${feed.source}:`, error);
+                // Update section to failed state
+                section.className = "failed";
+                header.textContent = `${feed.source} (Failed to Load)`;
+                feedFinished();
               });
-              section.appendChild(moreButton);
-            }
-            feedFinished();
-          })
-          .catch(error => {
-            console.error(`Error fetching/parsing RSS for ${feed.source}:`, error);
-            section.className = "failed";
-            header.textContent = `${feed.source} (Failed to Load)`;
-            const errDiv = document.createElement("div");
-            errDiv.innerHTML = `Unable to load feed. <br><a href="${feed.url}" target="_blank">View Feed Here</a>`;
-            section.appendChild(errDiv);
-            feedFinished();
           });
-      });
-    });
-  </script>
-</body>
+     });
+   </script>
+ </body>
 </html>
