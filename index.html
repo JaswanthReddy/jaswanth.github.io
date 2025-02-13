@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Indian News Hub</title>
     <style>
-      /* Previous styles remain the same */
       body {
         font-family: Arial, sans-serif;
         margin: 0;
@@ -99,28 +98,18 @@
       .retry-button:hover, .more-button:hover {
         opacity: 0.9;
       }
-      .proxy-select {
-        margin: 10px auto;
-        padding: 5px;
-        display: block;
-      }
     </style>
   </head>
   <body>
     <header>
       <h1>Indian News Hub</h1>
-      <p>News grouped by source in a grid layout (3 per row)</p>
-      <select id="proxy-select" class="proxy-select">
-        <option value="allorigins">All Origins Proxy</option>
-        <option value="rss2json">RSS2JSON API</option>
-      </select>
+      <p>Latest news from top Indian sources</p>
     </header>
     <div id="global-loader">Loading news sources, please wait...</div>
     <div class="container" id="news-container"></div>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        const proxySelect = document.getElementById("proxy-select");
         const container = document.getElementById("news-container");
         const globalLoader = document.getElementById("global-loader");
         
@@ -156,61 +145,25 @@
           }
         }
 
-        function getProxyUrl(originalUrl) {
-          const proxyType = proxySelect.value;
-          switch (proxyType) {
-            case 'allorigins':
-              return `https://api.allorigins.win/get?url=${encodeURIComponent(originalUrl)}`;
-            case 'rss2json':
-              return `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(originalUrl)}`;
-            default:
-              return `https://api.allorigins.win/get?url=${encodeURIComponent(originalUrl)}`;
-          }
-        }
-
-        function createListItem(item, proxyType) {
+        function createListItem(item) {
           const li = document.createElement("li");
-          let title, link;
-
-          if (proxyType === 'rss2json') {
-            title = item.title;
-            link = item.link;
-          } else {
-            title = item.querySelector("title")?.textContent || "No Title";
-            link = item.querySelector("link")?.textContent || 
-                   item.querySelector("link")?.getAttribute("href") || "#";
-          }
-
-          // Clean the title and link
-          title = title.replace(/(<([^>]+)>)/gi, "").replace(/CDATA|[\[\]]/g, "").trim();
-          link = link.replace(/CDATA|[\[\]]/g, "").trim();
-
+          const title = item.title.replace(/(<([^>]+)>)/gi, "").trim();
+          const link = item.link.trim();
           li.innerHTML = `<a href="${link}" target="_blank">${title}</a>`;
           return li;
         }
 
         function loadFeed(feed, section) {
-          const proxyType = proxySelect.value;
-          const feedUrl = getProxyUrl(feed.url);
+          const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
 
-          fetch(feedUrl)
+          fetch(apiUrl)
             .then(response => {
               if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
               return response.json();
             })
             .then(data => {
-              let items;
-              if (proxyType === 'rss2json') {
-                if (data.status !== 'ok') throw new Error('RSS2JSON API error');
-                items = data.items;
-              } else {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-                if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-                  throw new Error("XML parsing error");
-                }
-                items = Array.from(xmlDoc.querySelectorAll("item"));
-              }
+              if (data.status !== 'ok') throw new Error('RSS API error');
+              const items = data.items;
 
               if (!items || items.length === 0) throw new Error("No items found");
 
@@ -221,7 +174,7 @@
               const recentItems = items.slice(0, 10);
               const remainingItems = items.slice(10);
 
-              recentItems.forEach(item => ul.appendChild(createListItem(item, proxyType)));
+              recentItems.forEach(item => ul.appendChild(createListItem(item)));
               section.appendChild(ul);
 
               if (remainingItems.length > 0) {
@@ -229,7 +182,7 @@
                 moreButton.textContent = "View More";
                 moreButton.className = "more-button";
                 moreButton.addEventListener("click", function() {
-                  remainingItems.forEach(item => ul.appendChild(createListItem(item, proxyType)));
+                  remainingItems.forEach(item => ul.appendChild(createListItem(item)));
                   moreButton.style.display = "none";
                 });
                 section.appendChild(moreButton);
@@ -255,27 +208,14 @@
             });
         }
 
-        function initializeFeedSections() {
-          // Reset the container and counter
-          container.innerHTML = '';
-          remainingFeeds = feeds.length;
-          globalLoader.style.display = "block";
-
-          // Create and load feed sections
-          feeds.forEach(feed => {
-            const section = document.createElement("section");
-            section.className = "loading";
-            section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
-            container.appendChild(section);
-            loadFeed(feed, section);
-          });
-        }
-
         // Initialize feed sections
-        initializeFeedSections();
-
-        // Add event listener for proxy selection change
-        proxySelect.addEventListener('change', initializeFeedSections);
+        feeds.forEach(feed => {
+          const section = document.createElement("section");
+          section.className = "loading";
+          section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
+          container.appendChild(section);
+          loadFeed(feed, section);
+        });
       });
     </script>
   </body>
