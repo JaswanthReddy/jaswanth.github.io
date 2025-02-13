@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Indian News Hub</title>
     <style>
+      /* Previous styles remain the same */
       body {
         font-family: Arial, sans-serif;
         margin: 0;
@@ -51,15 +52,9 @@
         text-align: center;
         border-radius: 5px;
       }
-      section.loading h2 {
-        background-color: #ffc107;
-      }
-      section.failed h2 {
-        background-color: #dc3545;
-      }
-      section.loaded h2 {
-        background-color: #28a745;
-      }
+      section.loading h2 { background-color: #ffc107; }
+      section.failed h2 { background-color: #dc3545; }
+      section.loaded h2 { background-color: #28a745; }
       ul {
         list-style-type: none;
         padding-left: 0;
@@ -67,155 +62,166 @@
       }
       li {
         margin-bottom: 8px;
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+      }
+      li:last-child {
+        border-bottom: none;
       }
       li a {
         text-decoration: none;
         color: #333;
         font-size: 0.9em;
+        display: block;
       }
       li a:hover {
         text-decoration: underline;
+        background-color: #f8f8f8;
       }
-      li a:visited {
-        color: #888;
-      }
-      button.more-button {
-        display: block;
-        margin-top: 10px;
-        padding: 5px 10px;
-        font-size: 0.8em;
-        background-color: #333;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-      button.more-button:hover {
-        background-color: #555;
-      }
-      .retry-button {
+      li a:visited { color: #888; }
+      .retry-button, .more-button {
         display: block;
         margin: 10px auto;
-        padding: 5px 10px;
-        background-color: #dc3545;
+        padding: 8px 16px;
+        font-size: 0.9em;
         color: #fff;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .retry-button {
+        background-color: #dc3545;
+      }
+      .more-button {
+        background-color: #333;
+      }
+      .retry-button:hover, .more-button:hover {
+        opacity: 0.9;
+      }
+      .proxy-select {
+        margin: 10px auto;
+        padding: 5px;
+        display: block;
       }
     </style>
   </head>
   <body>
     <header>
       <h1>Indian News Hub</h1>
-      <p>News grouped by source in a grid layout (3 per row). Links change color after being read.</p>
+      <p>News grouped by source in a grid layout (3 per row)</p>
+      <select id="proxy-select" class="proxy-select">
+        <option value="allorigins">All Origins Proxy</option>
+        <option value="rss2json">RSS2JSON API</option>
+      </select>
     </header>
     <div id="global-loader">Loading news sources, please wait...</div>
     <div class="container" id="news-container"></div>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        const proxyUrl = "https://cors-anywhere.herokuapp.com/";
+        const proxySelect = document.getElementById("proxy-select");
+        const container = document.getElementById("news-container");
+        const globalLoader = document.getElementById("global-loader");
         
         const feeds = [
-          { 
-            source: "Times of India", 
-            url: "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
-            backup: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
+          {
+            source: "Times of India",
+            url: "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"
           },
           {
             source: "Hindustan Times",
-            url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
-            backup: "https://www.hindustantimes.com/rss/top-news/rssfeed.xml"
+            url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml"
           },
           {
             source: "NDTV",
-            url: "https://feeds.feedburner.com/ndtvnews-top-stories",
-            backup: "https://feeds.feedburner.com/ndtvnews-india-news"
-          },
-          {
-            source: "Indian Express",
-            url: "https://indianexpress.com/feed/",
-            backup: "https://indianexpress.com/section/india/feed/"
-          },
-          {
-            source: "News18",
-            url: "https://www.news18.com/rss/india.xml",
-            backup: "https://www.news18.com/rss/india.xml"
+            url: "https://feeds.feedburner.com/ndtvnews-top-stories"
           },
           {
             source: "The Hindu",
-            url: "https://www.thehindu.com/news/feeder/default.rss",
-            backup: "https://www.thehindu.com/news/national/feeder/default.rss"
+            url: "https://www.thehindu.com/news/feeder/default.rss"
+          },
+          {
+            source: "News18",
+            url: "https://www.news18.com/rss/india.xml"
           }
         ];
 
-        const container = document.getElementById("news-container");
-        const globalLoader = document.getElementById("global-loader");
         let remainingFeeds = feeds.length;
 
         function feedFinished() {
           remainingFeeds--;
-          if (remainingFeeds === 0) globalLoader.style.display = "none";
+          if (remainingFeeds === 0) {
+            globalLoader.style.display = "none";
+          }
         }
 
-        function createListItem(item) {
+        function getProxyUrl(originalUrl) {
+          const proxyType = proxySelect.value;
+          switch (proxyType) {
+            case 'allorigins':
+              return `https://api.allorigins.win/get?url=${encodeURIComponent(originalUrl)}`;
+            case 'rss2json':
+              return `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(originalUrl)}`;
+            default:
+              return `https://api.allorigins.win/get?url=${encodeURIComponent(originalUrl)}`;
+          }
+        }
+
+        function createListItem(item, proxyType) {
           const li = document.createElement("li");
           let title, link;
 
-          // Handle different RSS formats
-          if (item.querySelector("title")) {
-            title = item.querySelector("title").textContent;
-            link = item.querySelector("link") ? 
-                   item.querySelector("link").textContent : 
-                   item.querySelector("link") ? 
-                   item.querySelector("link").getAttribute("href") : "#";
-          } else if (item.getElementsByTagName("title").length > 0) {
-            title = item.getElementsByTagName("title")[0].textContent;
-            link = item.getElementsByTagName("link")[0] ? 
-                   item.getElementsByTagName("link")[0].textContent : "#";
+          if (proxyType === 'rss2json') {
+            title = item.title;
+            link = item.link;
           } else {
-            title = "No Title Available";
-            link = "#";
+            title = item.querySelector("title")?.textContent || "No Title";
+            link = item.querySelector("link")?.textContent || 
+                   item.querySelector("link")?.getAttribute("href") || "#";
           }
 
           // Clean the title and link
-          title = title.replace(/CDATA|[\[\]]/g, "").trim();
+          title = title.replace(/(<([^>]+)>)/gi, "").replace(/CDATA|[\[\]]/g, "").trim();
           link = link.replace(/CDATA|[\[\]]/g, "").trim();
 
           li.innerHTML = `<a href="${link}" target="_blank">${title}</a>`;
           return li;
         }
 
-        function loadFeed(feed, section, isBackup = false) {
-          const feedUrl = isBackup ? feed.backup : feed.url;
-          
-          fetch(proxyUrl + encodeURIComponent(feedUrl))
+        function loadFeed(feed, section) {
+          const proxyType = proxySelect.value;
+          const feedUrl = getProxyUrl(feed.url);
+
+          fetch(feedUrl)
             .then(response => {
               if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.text();
+              return response.json();
             })
-            .then(str => {
-              const parser = new DOMParser();
-              const xmlDoc = parser.parseFromString(str, "text/xml");
-              
-              // Check for parsing errors
-              if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-                throw new Error("XML parsing error");
+            .then(data => {
+              let items;
+              if (proxyType === 'rss2json') {
+                if (data.status !== 'ok') throw new Error('RSS2JSON API error');
+                items = data.items;
+              } else {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                  throw new Error("XML parsing error");
+                }
+                items = Array.from(xmlDoc.querySelectorAll("item"));
               }
 
-              const items = xmlDoc.querySelectorAll("item");
               if (!items || items.length === 0) throw new Error("No items found");
 
               section.className = "loaded";
               section.querySelector("h2").textContent = feed.source;
 
               const ul = document.createElement("ul");
-              const itemsArray = Array.from(items);
-              const recentItems = itemsArray.slice(0, 10);
-              const remainingItems = itemsArray.slice(10);
+              const recentItems = items.slice(0, 10);
+              const remainingItems = items.slice(10);
 
-              recentItems.forEach(item => ul.appendChild(createListItem(item)));
+              recentItems.forEach(item => ul.appendChild(createListItem(item, proxyType)));
               section.appendChild(ul);
 
               if (remainingItems.length > 0) {
@@ -223,7 +229,7 @@
                 moreButton.textContent = "View More";
                 moreButton.className = "more-button";
                 moreButton.addEventListener("click", function() {
-                  remainingItems.forEach(item => ul.appendChild(createListItem(item)));
+                  remainingItems.forEach(item => ul.appendChild(createListItem(item, proxyType)));
                   moreButton.style.display = "none";
                 });
                 section.appendChild(moreButton);
@@ -231,38 +237,45 @@
             })
             .catch(error => {
               console.error(`Error fetching ${feed.source}:`, error);
+              section.className = "failed";
+              section.querySelector("h2").textContent = `${feed.source} (Failed to Load)`;
               
-              if (!isBackup && feed.backup) {
-                // Try backup URL
-                loadFeed(feed, section, true);
-              } else {
-                section.className = "failed";
-                section.querySelector("h2").textContent = `${feed.source} (Failed to Load)`;
-                
-                // Add retry button
-                const retryButton = document.createElement("button");
-                retryButton.textContent = "Retry Loading";
-                retryButton.className = "retry-button";
-                retryButton.addEventListener("click", function() {
-                  section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
-                  section.className = "loading";
-                  loadFeed(feed, section);
-                });
-                section.appendChild(retryButton);
-              }
+              const retryButton = document.createElement("button");
+              retryButton.textContent = "Retry Loading";
+              retryButton.className = "retry-button";
+              retryButton.addEventListener("click", function() {
+                section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
+                section.className = "loading";
+                loadFeed(feed, section);
+              });
+              section.appendChild(retryButton);
             })
             .finally(() => {
               feedFinished();
             });
         }
 
-        feeds.forEach(feed => {
-          const section = document.createElement("section");
-          section.className = "loading";
-          section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
-          container.appendChild(section);
-          loadFeed(feed, section);
-        });
+        function initializeFeedSections() {
+          // Reset the container and counter
+          container.innerHTML = '';
+          remainingFeeds = feeds.length;
+          globalLoader.style.display = "block";
+
+          // Create and load feed sections
+          feeds.forEach(feed => {
+            const section = document.createElement("section");
+            section.className = "loading";
+            section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
+            container.appendChild(section);
+            loadFeed(feed, section);
+          });
+        }
+
+        // Initialize feed sections
+        initializeFeedSections();
+
+        // Add event listener for proxy selection change
+        proxySelect.addEventListener('change', initializeFeedSections);
       });
     </script>
   </body>
