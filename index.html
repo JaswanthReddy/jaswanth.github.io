@@ -10,7 +10,7 @@
         margin: 0;
         padding: 0;
         background-color: #f4f4f4;
-        overflow-y: auto; /* Enable vertical scrolling */
+        overflow-y: auto;
       }
       header {
         background-color: #333;
@@ -29,19 +29,19 @@
       }
       .container {
         display: flex;
-        flex-wrap: wrap; /* Wrap sections into new rows */
-        gap: 20px; /* Space between tiles */
+        flex-wrap: wrap;
+        gap: 20px;
         padding: 20px;
-        justify-content: center; /* Center tiles in the container */
+        justify-content: center;
       }
       section {
-        flex: 1 1 calc(33.33% - 40px); /* Three sections per row */
+        flex: 1 1 calc(33.33% - 40px);
         box-sizing: border-box;
         background-color: #fff;
         border-radius: 8px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         padding: 15px;
-        min-width: 300px; /* Minimum width for smaller screens */
+        min-width: 300px;
       }
       section h2 {
         font-size: 1em;
@@ -52,13 +52,13 @@
         border-radius: 5px;
       }
       section.loading h2 {
-        background-color: #ffc107; /* Yellow for loading */
+        background-color: #ffc107;
       }
       section.failed h2 {
-        background-color: #dc3545; /* Red for failed */
+        background-color: #dc3545;
       }
       section.loaded h2 {
-        background-color: #28a745; /* Green for loaded */
+        background-color: #28a745;
       }
       ul {
         list-style-type: none;
@@ -70,28 +70,38 @@
       }
       li a {
         text-decoration: none;
-        color: #333; /* Default link color */
-        font-size: 0.9em; /* Slightly smaller font size for compactness */
+        color: #333;
+        font-size: 0.9em;
       }
       li a:hover {
-        text-decoration: underline; /* Underline on hover */
+        text-decoration: underline;
       }
       li a:visited {
-        color: #888; /* Change color for visited links */
+        color: #888;
       }
       button.more-button {
         display: block;
         margin-top: 10px;
         padding: 5px 10px;
-        font-size: 0.8em; /* Smaller button size */
-        background-color: #333; /* Dark button background */
-        color: #fff; /* White button text */
+        font-size: 0.8em;
+        background-color: #333;
+        color: #fff;
         border: none;
         border-radius: 5px;
-        cursor: pointer; /* Pointer cursor on hover */
+        cursor: pointer;
       }
       button.more-button:hover {
-        background-color: #555; /* Slightly lighter on hover */
+        background-color: #555;
+      }
+      .retry-button {
+        display: block;
+        margin: 10px auto;
+        padding: 5px 10px;
+        background-color: #dc3545;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
       }
     </style>
   </head>
@@ -100,104 +110,160 @@
       <h1>Indian News Hub</h1>
       <p>News grouped by source in a grid layout (3 per row). Links change color after being read.</p>
     </header>
-    <!-- Global loader element -->
     <div id="global-loader">Loading news sources, please wait...</div>
-    <div class="container" id="news-container">
-      <!-- News source sections will be added here dynamically -->
-    </div>
+    <div class="container" id="news-container"></div>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
+        const proxyUrl = "https://cors-anywhere.herokuapp.com/";
         
-          const proxyUrl = "https://api.allorigins.win/get?url=";
+        const feeds = [
+          { 
+            source: "Times of India", 
+            url: "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+            backup: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
+          },
+          {
+            source: "Hindustan Times",
+            url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+            backup: "https://www.hindustantimes.com/rss/top-news/rssfeed.xml"
+          },
+          {
+            source: "NDTV",
+            url: "https://feeds.feedburner.com/ndtvnews-top-stories",
+            backup: "https://feeds.feedburner.com/ndtvnews-india-news"
+          },
+          {
+            source: "Indian Express",
+            url: "https://indianexpress.com/feed/",
+            backup: "https://indianexpress.com/section/india/feed/"
+          },
+          {
+            source: "News18",
+            url: "https://www.news18.com/rss/india.xml",
+            backup: "https://www.news18.com/rss/india.xml"
+          },
+          {
+            source: "The Hindu",
+            url: "https://www.thehindu.com/news/feeder/default.rss",
+            backup: "https://www.thehindu.com/news/national/feeder/default.rss"
+          }
+        ];
 
-          const feeds = [
-            { source:"Times of India", url:"https://timesofindia.indiatimes.com/rssfeedstopstories.cms"},
-            {source:"Hindustan Times",url:"https://www.hindustantimes.com/rss/topnews/rssfeed.xml"},
-            {source:"NDTV",url:"https://feeds.feedburner.com/NDTV-LatestNews"},
-            {source:"Indian Express",url:"https://indianexpress.com/feed/"},
-            {source:"News18",url:"https://www.news18.com/rss/india.xml"},
-            {source:"Firstpost",url:"https://www.firstpost.com/rss/india.xml"},
-            {source:"The Hindu",url:"https://www.thehindu.com/feeder/default.rss"},
-            {source:"Business Standard",url:"https://www.business-standard.com/rss/latest.rss"},
-            {source:"Scroll.in",url:"https://scroll.in/feed"},
-            {source:"The Wire",url:"https://thewire.in/rss"},
-            {source:"Republic World",url:"https://www.republicworld.com/rss/latest-news.rss"},
-            {source:"The Lallantop",url:"https://www.thelallantop.com/feed/"}
-          ];
+        const container = document.getElementById("news-container");
+        const globalLoader = document.getElementById("global-loader");
+        let remainingFeeds = feeds.length;
 
-          const container = document.getElementById("news-container");
-          const globalLoader = document.getElementById("global-loader");
-          let remainingFeeds = feeds.length;
+        function feedFinished() {
+          remainingFeeds--;
+          if (remainingFeeds === 0) globalLoader.style.display = "none";
+        }
 
-          function feedFinished() {
-            remainingFeeds--;
-            if (remainingFeeds === 0) globalLoader.style.display = "none";
+        function createListItem(item) {
+          const li = document.createElement("li");
+          let title, link;
+
+          // Handle different RSS formats
+          if (item.querySelector("title")) {
+            title = item.querySelector("title").textContent;
+            link = item.querySelector("link") ? 
+                   item.querySelector("link").textContent : 
+                   item.querySelector("link") ? 
+                   item.querySelector("link").getAttribute("href") : "#";
+          } else if (item.getElementsByTagName("title").length > 0) {
+            title = item.getElementsByTagName("title")[0].textContent;
+            link = item.getElementsByTagName("link")[0] ? 
+                   item.getElementsByTagName("link")[0].textContent : "#";
+          } else {
+            title = "No Title Available";
+            link = "#";
           }
 
-          function createListItem(item) {
-            const titleElement = item.querySelector("title");
-            const linkElement = item.querySelector("link");
-            const title = titleElement ? titleElement.textContent : "No Title";
-            const link = linkElement ? linkElement.textContent : "#";
-            const li = document.createElement("li");
-            li.innerHTML = `<a href="${link}">${title}</a>`;
-            return li;
-          }
+          // Clean the title and link
+          title = title.replace(/CDATA|[\[\]]/g, "").trim();
+          link = link.replace(/CDATA|[\[\]]/g, "").trim();
 
-          feeds.forEach((feed) => {
-            // Create a section immediately to show loading state
-            const section = document.createElement("section");
-            section.className = "loading";
-            const header = document.createElement("h2");
-            header.textContent = `${feed.source} (Loading...)`;
-            section.appendChild(header);
-            container.appendChild(section);
+          li.innerHTML = `<a href="${link}" target="_blank">${title}</a>`;
+          return li;
+        }
 
-            fetch(proxyUrl + encodeURIComponent(feed.url))
-              .then((response) => response.json())
-              .then((data) => {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-                const items = xmlDoc.querySelectorAll("item");
-                if (!items || items.length === 0) throw new Error("No items found");
+        function loadFeed(feed, section, isBackup = false) {
+          const feedUrl = isBackup ? feed.backup : feed.url;
+          
+          fetch(proxyUrl + encodeURIComponent(feedUrl))
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.text();
+            })
+            .then(str => {
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(str, "text/xml");
+              
+              // Check for parsing errors
+              if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+                throw new Error("XML parsing error");
+              }
 
-                // Update section to loaded state
-                section.className = "loaded";
-                header.textContent = feed.source;
+              const items = xmlDoc.querySelectorAll("item");
+              if (!items || items.length === 0) throw new Error("No items found");
 
-                // Add headlines to the list
-                const ul = document.createElement("ul");
-                const itemsArray = Array.from(items);
-                const recentItems = itemsArray.slice(0, 10);
-                const remainingItems = itemsArray.slice(10);
+              section.className = "loaded";
+              section.querySelector("h2").textContent = feed.source;
 
-                recentItems.forEach((item) => ul.appendChild(createListItem(item)));
-                section.appendChild(ul);
+              const ul = document.createElement("ul");
+              const itemsArray = Array.from(items);
+              const recentItems = itemsArray.slice(0, 10);
+              const remainingItems = itemsArray.slice(10);
 
-                // Add "View More" button if there are more articles
-                if (remainingItems.length > 0) {
-                  const moreButton = document.createElement("button");
-                  moreButton.textContent = "View More";
-                  moreButton.className = "more-button";
-                  moreButton.addEventListener("click", function () {
-                    remainingItems.forEach((item) => ul.appendChild(createListItem(item)));
-                    moreButton.style.display = "none"; // Hide button after expanding
-                  });
-                  section.appendChild(moreButton);
-                }
+              recentItems.forEach(item => ul.appendChild(createListItem(item)));
+              section.appendChild(ul);
 
-                feedFinished();
-              })
-              .catch((error) => {
-                console.error(`Error fetching/parsing RSS for ${feed.source}:`, error);
-                // Update section to failed state
+              if (remainingItems.length > 0) {
+                const moreButton = document.createElement("button");
+                moreButton.textContent = "View More";
+                moreButton.className = "more-button";
+                moreButton.addEventListener("click", function() {
+                  remainingItems.forEach(item => ul.appendChild(createListItem(item)));
+                  moreButton.style.display = "none";
+                });
+                section.appendChild(moreButton);
+              }
+            })
+            .catch(error => {
+              console.error(`Error fetching ${feed.source}:`, error);
+              
+              if (!isBackup && feed.backup) {
+                // Try backup URL
+                loadFeed(feed, section, true);
+              } else {
                 section.className = "failed";
-                header.textContent = `${feed.source} (Failed to Load)`;
-                feedFinished();
-              });
-          });
-     });
-   </script>
- </body>
+                section.querySelector("h2").textContent = `${feed.source} (Failed to Load)`;
+                
+                // Add retry button
+                const retryButton = document.createElement("button");
+                retryButton.textContent = "Retry Loading";
+                retryButton.className = "retry-button";
+                retryButton.addEventListener("click", function() {
+                  section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
+                  section.className = "loading";
+                  loadFeed(feed, section);
+                });
+                section.appendChild(retryButton);
+              }
+            })
+            .finally(() => {
+              feedFinished();
+            });
+        }
+
+        feeds.forEach(feed => {
+          const section = document.createElement("section");
+          section.className = "loading";
+          section.innerHTML = `<h2>${feed.source} (Loading...)</h2>`;
+          container.appendChild(section);
+          loadFeed(feed, section);
+        });
+      });
+    </script>
+  </body>
 </html>
